@@ -12,13 +12,16 @@ def train_model(model, train_loader, val_loader, num_epochs, learning_rate, devi
 
     for epoch in range(num_epochs):
         # Training phase
-        model.train()
+        model.train()  # Ensure the model is in training mode
         train_loss = 0
         for images, targets in train_loader:
             images = [img.to(device) for img in images]
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-            loss_dict = model(images, targets)
-            loss = sum(loss for loss in loss_dict.values())
+
+            # Forward pass
+            loss_dict = model(images, targets)  # Should return a dictionary of losses
+            loss = sum(loss_value for loss_value in loss_dict.values())
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -26,16 +29,21 @@ def train_model(model, train_loader, val_loader, num_epochs, learning_rate, devi
         print(f"Epoch [{epoch + 1}/{num_epochs}], Training Loss: {train_loss:.4f}")
 
         # Validation phase
-        model.eval()
+        model.train()  # Important: Set the model to training mode to compute validation losses
         val_loss = 0
         with torch.no_grad():
             for images, targets in val_loader:
                 images = [img.to(device) for img in images]
                 targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-                
-                # Compute validation loss
+
+                # Forward pass with targets to compute losses
                 loss_dict = model(images, targets)
-                loss = sum(loss for loss in loss_dict.values())
+
+                if isinstance(loss_dict, dict):
+                    loss = sum(loss_value for loss_value in loss_dict.values())
+                else:
+                    raise TypeError(f"Unexpected type for loss_dict: {type(loss_dict)}, Content: {loss_dict}")
+
                 val_loss += loss.item()
         print(f"Epoch [{epoch + 1}/{num_epochs}], Validation Loss: {val_loss:.4f}")
 
@@ -50,6 +58,3 @@ def train_model(model, train_loader, val_loader, num_epochs, learning_rate, devi
     if save_path:
         torch.save(model.state_dict(), save_path)
         print(f"Final model saved at {save_path}")
-
-
-

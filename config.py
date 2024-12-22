@@ -3,7 +3,7 @@
 import torch
 
 # Paths
-CSV_PATH = '/net/travail/hsosapavonca/AMIP/segmentation_colors.csv'
+#CSV_PATH = '/net/travail/hsosapavonca/AMIP/segmentation_colors.csv'
 SUNNY_IMAGE_DIR = "/net/ens/am4ip/datasets/project-dataset/sunny_images"
 SUNNY_MASK_DIR = "/net/ens/am4ip/datasets/project-dataset/sunny_sseg"
 RAINY_IMAGE_DIR = "/net/ens/am4ip/datasets/project-dataset/rainy_images"
@@ -17,7 +17,7 @@ MODEL_SAVE_PATH = "/net/travail/hsosapavonca/AMIP/model/model.pth"  # Save path 
 # Hyperparameters
 IMAGE_SIZE = (512, 512)
 BATCH_SIZE = 8
-NUM_CLASSES = 33
+#NUM_CLASSES = 33
 NUM_EPOCHS = 10
 LEARNING_RATE = 1e-4
 
