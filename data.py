@@ -1,116 +1,108 @@
-import os
 import numpy as np
-import pandas as pd
-from PIL import Image
-import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision.transforms import functional as F
-from torch.utils.data import random_split
+from config import *
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+import os
 
-def get_dataloaders(image_dirs, mask_dirs, batch_size, image_size, split_ratios=(0.8, 0.1, 0.1)):
-    """
-    Returns DataLoaders for training, validation, and testing.
-    Args:
-        image_dirs (list): List of image directory paths.
-        mask_dirs (list): List of corresponding mask directory paths.
-        batch_size (int): Batch size for DataLoader.
-        image_size (tuple): Image resizing dimensions.
-        split_ratios (tuple): Ratios for train, val, and test splits.
-    """
-    dataset = InstanceSegmentationDataset(image_dirs, mask_dirs, image_size=image_size)
-    total_len = len(dataset)
-    
-    train_len = int(total_len * split_ratios[0])
-    val_len = int(total_len * split_ratios[1])
-    test_len = total_len - train_len - val_len
+# RGB to Class Mapping
+def rgb_to_class(mask):
+    mapping = {
+        (0, 0, 0): 0, 
+        (111, 74, 0): 1, 
+        (81, 0, 81): 2, 
+        (128, 64, 128): 3, 
+        (244, 35, 232): 4,
+        (250, 170, 160): 5, 
+        (230, 150, 140): 6, 
+        (70, 70, 70): 7, 
+        (102, 102, 156): 8, 
+        (190, 153, 153): 9,
+        (180, 165, 180): 10, 
+        (150, 100, 100): 11, 
+        (150, 120, 90): 12, 
+        (153, 153, 153): 13, 
+        (250, 170, 30): 14,
+        (220, 220, 0): 15, 
+        (107, 142, 35): 16, 
+        (152, 251, 152): 17, 
+        (70, 130, 180): 18, 
+        (220, 20, 60): 19,
+        (255, 0, 0): 20, 
+        (0, 0, 142): 21, 
+        (0, 0, 70): 22, 
+        (0, 60, 100): 23, 
+        (0, 0, 90): 24,
+        (0, 0, 110): 25, 
+        (0, 80, 100): 26, 
+        (0, 0, 230): 27, 
+        (119, 11, 32): 28
+    }
+    mask = mask.reshape(-1, 3)
+    mask_class = np.zeros(mask.shape[0], dtype=np.uint8)
+    for i, pixel in enumerate(mask):
+        mask_class[i] = mapping.get(tuple(pixel), 0)
+    return mask_class.reshape(IMG_HEIGHT, IMG_WIDTH)
 
-    train_set, val_set, test_set = random_split(dataset, [train_len, val_len, test_len])
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=lambda x: tuple(zip(*x)), num_workers=16)
-    print("Trainer loader finished!")
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, collate_fn=lambda x: tuple(zip(*x)), num_workers=16)
-    print("Validation loader finished!")
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, collate_fn=lambda x: tuple(zip(*x)), num_workers=16)
-    print("Test loader finished!")
-    print("Data loaders finished")
-    return train_loader, val_loader, test_loader
+# Data Pipeline
+def parse_image(img_path, mask_path):
+    img = tf.io.read_file(img_path)
+    img = tf.image.decode_png(img, channels=3)
+    img = tf.image.resize(img, [IMG_HEIGHT, IMG_WIDTH]) / 255.0
 
+    mask = tf.io.read_file(mask_path)
+    mask = tf.image.decode_png(mask, channels=3)
+    mask = tf.image.resize(mask, [IMG_HEIGHT, IMG_WIDTH])
+    mask = tf.numpy_function(func=rgb_to_class, inp=[mask], Tout=tf.uint8)
 
-class InstanceSegmentationDataset(Dataset):
-    def __init__(self, image_dirs, mask_dirs, transform=None, image_size=(512, 512), unlabeled_id=255):
-        """
-        Initialize dataset with multiple image and mask directories.
-        Args:
-            image_dirs (list): List of image directory paths.
-            mask_dirs (list): List of corresponding mask directory paths.
-            transform (callable, optional): Optional transform to be applied.
-            image_size (tuple): Image resizing dimensions.
-            unlabeled_id (int): Pixel value for unlabeled regions.
-        """
-        self.image_dirs = image_dirs
-        self.mask_dirs = mask_dirs
-        self.transform = transform
-        self.image_size = image_size
-        self.unlabeled_id = unlabeled_id
-        
-        # Aggregate image paths across all directories
-        self.images = []
-        self.masks = []
-        for image_dir, mask_dir in zip(image_dirs, mask_dirs):
-            image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
-            self.images.extend([os.path.join(image_dir, f) for f in image_files])
-            self.masks.extend([os.path.join(mask_dir, f) for f in image_files])
+    # Explicitly set the shape for TensorFlow
+    mask.set_shape([IMG_HEIGHT, IMG_WIDTH])
+    mask = tf.one_hot(mask, NUM_CLASSES)
+    mask.set_shape([IMG_HEIGHT, IMG_WIDTH, NUM_CLASSES])
 
-    def __len__(self):
-        return len(self.images)
+    return img, mask
 
-    def __getitem__(self, idx):
-        # Load image and mask
-        image_path = self.images[idx]
-        mask_path = self.masks[idx]
-        image = Image.open(image_path).convert("RGB")
-        mask = Image.open(mask_path)
-        
-        # Resize and convert
-        image = F.resize(image, self.image_size)
-        mask = F.resize(mask, self.image_size, interpolation=Image.NEAREST)
-        mask = np.array(mask)
+def create_dataset(image_paths, mask_paths, batch_size):
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
+    dataset = dataset.map(parse_image, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return dataset
 
-        # Map unlabeled to background (0)
-        mask[mask == self.unlabeled_id] = 0
+def load_datasets():
+    # Enable GPU memory growth
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
 
-        # Get unique object IDs (excluding background)
-        obj_ids = np.unique(mask)
-        obj_ids = obj_ids[obj_ids != 0]
+    # Disable XLA and OneDNN optimizations globally
+    os.environ['TF_XLA_FLAGS'] = '--tf_xla_auto_jit=0 --tf_xla_cpu_global_jit=false'
+    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-        # Create binary masks and bounding boxes
-        masks = mask == obj_ids[:, None, None]
-        boxes = []
-        valid_masks = []
-        valid_labels = []
-        for i, obj_id in enumerate(obj_ids):
-            pos = np.where(masks[i])
-            if len(pos[0]) > 0 and len(pos[1]) > 0:
-                xmin = np.min(pos[1])
-                xmax = np.max(pos[1])
-                ymin = np.min(pos[0])
-                ymax = np.max(pos[0])
-                
-                # Ensure the box is valid
-                if xmax > xmin and ymax > ymin:
-                    boxes.append([xmin, ymin, xmax, ymax])
-                    valid_masks.append(masks[i])
-                    valid_labels.append(obj_id)
+    # Check available devices
+    print("Available devices:", tf.config.list_physical_devices())
 
-        # Ensure at least one valid object
-        if len(boxes) == 0:
-            raise ValueError(f"No valid bounding boxes found for image {image_path}")
+    # Load file paths
+    sunny_image_files = [f for f in os.listdir(SUNNY_IMAGES_PATH) if f.endswith('.png')]
+    rainy_image_files = [f for f in os.listdir(RAINY_IMAGES_PATH) if f.endswith('.png')]
 
-        # Convert to tensors
-        boxes = torch.as_tensor(boxes, dtype=torch.float32)
-        labels = torch.as_tensor(valid_labels, dtype=torch.int64)
-        masks = torch.tensor(np.array(valid_masks), dtype=torch.uint8)
-        
-        return F.to_tensor(image), {"boxes": boxes, "labels": labels, "masks": masks}
+    sunny_image_paths = [os.path.join(SUNNY_IMAGES_PATH, f) for f in sunny_image_files]
+    sunny_mask_paths = [os.path.join(SUNNY_MASKS_PATH, f) for f in sunny_image_files]
 
+    rainy_image_paths = [os.path.join(RAINY_IMAGES_PATH, f) for f in rainy_image_files]
+    rainy_mask_paths = [os.path.join(RAINY_MASKS_PATH, f) for f in rainy_image_files]
 
+    image_paths = sunny_image_paths + rainy_image_paths
+    mask_paths = sunny_mask_paths + rainy_mask_paths
 
+    # Split datasets
+    train_img, val_test_img, train_mask, val_test_mask = train_test_split(
+        image_paths, mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED
+    )
+    val_img, test_img, val_mask, test_mask = train_test_split(
+        val_test_img, val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED
+    )
+
+    train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE)
+    val_dataset = create_dataset(val_img, val_mask, BATCH_SIZE)
+    test_dataset = create_dataset(test_img, test_mask, BATCH_SIZE)
+
+    return train_dataset, val_dataset, test_dataset 

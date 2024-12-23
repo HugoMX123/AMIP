@@ -1,33 +1,64 @@
-from torchvision.models.detection import maskrcnn_resnet50_fpn
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-from torch import save
-from torchvision.models.detection import MaskRCNN_ResNet50_FPN_Weights
-import time
+from config import *
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.optimizers.legacy import Adam
 
-def get_model(num_classes):
-    start_time = time.time()
-    print("Loading Mask R-CNN model...")
-    
-    # Use Mask R-CNN instead of Faster R-CNN
-    model = maskrcnn_resnet50_fpn(weights=MaskRCNN_ResNet50_FPN_Weights.COCO_V1)
-    print(f"Model backbone loaded in {time.time() - start_time:.2f} seconds")
-    
-    # Save the initial model state
-    save(model.state_dict(), "/net/travail/hsosapavonca/AMIP/model/default/prebuilt_model.pth")
-    
-    # Modify the box predictor
-    start_time = time.time()
-    in_features_box = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features_box, num_classes)
-    print(f"Box predictor modified in {time.time() - start_time:.2f} seconds")
-    
-    # Modify the mask predictor
-    start_time = time.time()
-    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    hidden_layer = 256
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask, hidden_layer, num_classes)
-    print(f"Mask predictor modified in {time.time() - start_time:.2f} seconds")
-    
+
+# IoU Metric
+def iou_metric(y_true, y_pred):
+    # Convert predictions and labels to class indices
+    y_pred = tf.argmax(y_pred, axis=-1, output_type=tf.int32)
+    y_true = tf.argmax(y_true, axis=-1, output_type=tf.int32)
+
+    # Compute IoU for each class
+    iou_list = []
+    for i in range(NUM_CLASSES):
+        y_true_class = tf.cast(y_true == i, tf.float32)
+        y_pred_class = tf.cast(y_pred == i, tf.float32)
+        intersection = tf.reduce_sum(y_true_class * y_pred_class)
+        union = tf.reduce_sum(y_true_class) + tf.reduce_sum(y_pred_class) - intersection
+        iou = (intersection + 1e-7) / (union + 1e-7)  # Avoid divide by zero
+        iou_list.append(iou)
+
+    # Compute mean IoU
+    mean_iou = tf.reduce_mean(tf.stack(iou_list))
+    return mean_iou
+
+
+# U-Net Model
+def unet_model(input_size=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), num_classes=NUM_CLASSES):
+    inputs = layers.Input(input_size)
+    c1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
+    c1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(c1)
+    p1 = layers.MaxPooling2D((2, 2))(c1)
+
+    c2 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(p1)
+    c2 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(c2)
+    p2 = layers.MaxPooling2D((2, 2))(c2)
+
+    c3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(p2)
+    c3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(c3)
+    p3 = layers.MaxPooling2D((2, 2))(c3)
+
+    c4 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(p3)
+    c4 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(c4)
+
+    u1 = layers.Conv2DTranspose(256, (2, 2), strides=(2, 2), padding='same')(c4)
+    u1 = layers.concatenate([u1, c3])
+    c5 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(u1)
+    c5 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(c5)
+
+    u2 = layers.Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(c5)
+    u2 = layers.concatenate([u2, c2])
+    c6 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(u2)
+    c6 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(c6)
+
+    u3 = layers.Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(c6)
+    u3 = layers.concatenate([u3, c1])
+    c7 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(u3)
+    c7 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(c7)
+
+    outputs = layers.Conv2D(num_classes, (1, 1), activation='softmax')(c7)
+    model = models.Model(inputs, outputs)
+    model.compile(optimizer=Adam(learning_rate=1e-4), loss='categorical_crossentropy', metrics=[iou_metric])
     return model
-
