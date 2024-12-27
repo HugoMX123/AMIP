@@ -60,5 +60,5 @@ def unet_model(input_size=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), num_classes=NUM
 
     outputs = layers.Conv2D(num_classes, (1, 1), activation='softmax')(c7)
     model = models.Model(inputs, outputs)
-    model.compile(optimizer=Adam(learning_rate=1e-4), loss='categorical_crossentropy', metrics=[iou_metric])
+    model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss='categorical_crossentropy', metrics=[iou_metric])
     return model

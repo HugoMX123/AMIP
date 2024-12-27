@@ -2,7 +2,7 @@ import tensorflow as tf
 from config import *
 from data import *
 from model import unet_model
-
+import pandas as pd
 
 
 train_dataset, val_dataset, test_dataset = load_datasets()
@@ -15,3 +15,11 @@ checkpoint_path = "checkpoints/epoch_{epoch:02d}.h5"
 checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, save_weights_only=False, save_best_only=False)
 
 history = model.fit(train_dataset, validation_data=val_dataset, epochs=EPOCHS, callbacks=[checkpoint_callback])
+
+
+
+# Convert history.history to a DataFrame
+history_df = pd.DataFrame(history.history)
+
+# Save the DataFrame to a CSV file
+history_df.to_csv('training_history.csv', index=False)  

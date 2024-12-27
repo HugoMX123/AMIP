@@ -1,0 +1,10 @@
+An ideal size for the images would be 256x256 but it takes too much computational time so I decided to use 128x128, maybe changing some parameter is 
+possible to use bigger images but as far as Ive tried, this is our best shot
+
+Could be a good idea to use the visualize_dataset.py with discarding values of the dataset 
+according to the noise, seeing the vid, to check what frames are being discarded, but in the CREMI
+machines cuz in ssh its very slow.
+
+I have no idea what does the rgb_toclass function does or why its neccesary, 
+that part is made by GPT, maybe needs some checking or something idk.
+

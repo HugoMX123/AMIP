@@ -1,8 +1,16 @@
+import cv2
 import numpy as np
 from config import *
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import os
+
+# New function to check noise using Laplacian variance
+def is_noisy(img_path, threshold=100.0):
+    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    laplacian = cv2.Laplacian(img, cv2.CV_64F)
+    variance = laplacian.var()
+    return variance < threshold
 
 # RGB to Class Mapping
 def rgb_to_class(mask):
@@ -61,24 +69,24 @@ def parse_image(img_path, mask_path):
 
     return img, mask
 
-def create_dataset(image_paths, mask_paths, batch_size):
+# Augment function for horizontal flipping (you can expand this for more augmentations)
+def augment_image(img, mask):
+    img = tf.image.flip_left_right(img)
+    mask = tf.image.flip_left_right(mask)
+    return img, mask
+
+def create_dataset(image_paths, mask_paths, batch_size, augment=False):
     dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
     dataset = dataset.map(parse_image, num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Apply augmentation if the flag is True
+    if augment:
+        dataset = dataset.map(augment_image, num_parallel_calls=tf.data.AUTOTUNE)
+    
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
 
-def load_datasets():
-    # Enable GPU memory growth
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)
-
-    # Disable XLA and OneDNN optimizations globally
-    os.environ['TF_XLA_FLAGS'] = '--tf_xla_auto_jit=0 --tf_xla_cpu_global_jit=false'
-    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-
-    # Check available devices
-    print("Available devices:", tf.config.list_physical_devices())
+def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_threshold=DATA_NOISE_LAPLACIAN_THRESHOLD, AUGMENT_DATA=DATA_AUGMENTATION):
 
     # Load file paths
     sunny_image_files = [f for f in os.listdir(SUNNY_IMAGES_PATH) if f.endswith('.png')]
@@ -93,6 +101,21 @@ def load_datasets():
     image_paths = sunny_image_paths + rainy_image_paths
     mask_paths = sunny_mask_paths + rainy_mask_paths
 
+    # Filter noisy images if enabled
+    if FILTER_NOISY:
+        filtered_images = []
+        filtered_masks = []
+        discarded_count = 0
+        for img, mask in zip(image_paths, mask_paths):
+            if not is_noisy(img, threshold=noise_threshold):
+                filtered_images.append(img)
+                filtered_masks.append(mask)
+            else:
+                discarded_count += 1
+        print(f"Discarded {discarded_count} out of {len(image_paths)} images due to noise.")
+        image_paths = filtered_images
+        mask_paths = filtered_masks
+
     # Split datasets
     train_img, val_test_img, train_mask, val_test_mask = train_test_split(
         image_paths, mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED
@@ -101,8 +124,11 @@ def load_datasets():
         val_test_img, val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED
     )
 
-    train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE)
+    # Create datasets, apply augmentation if enabled
+    train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE, augment=AUGMENT_DATA)
     val_dataset = create_dataset(val_img, val_mask, BATCH_SIZE)
     test_dataset = create_dataset(test_img, test_mask, BATCH_SIZE)
 
-    return train_dataset, val_dataset, test_dataset 
+    return train_dataset, val_dataset, test_dataset
+
+
