@@ -118,11 +118,10 @@ def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_thresho
 
     # Split datasets
     train_img, val_test_img, train_mask, val_test_mask = train_test_split(
-        image_paths, mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED
-    )
+        image_paths, mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED)
+    
     val_img, test_img, val_mask, test_mask = train_test_split(
-        val_test_img, val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED
-    )
+        val_test_img, val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED)
 
     # Create datasets, apply augmentation if enabled
     train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE, augment=AUGMENT_DATA)

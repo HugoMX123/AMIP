@@ -1,19 +1,33 @@
+# saving path
+SAVING_PATH = '/net/travail/mvajay/advanced_project/'
+
 # Image dimensions
 IMG_HEIGHT = 128
 IMG_WIDTH = 128
 IMG_CHANNELS = 3
 NUM_CLASSES = 29
 
-EPOCHS = 30
-LEARNING_RATE = 1e-4
-BATCH_SIZE = 4
+# Model
+MODEL_NAME = "U-Net"
+SPECIALIZATION = "_tf_iou"
+LOSS_FUNCTION = "categorical_crossentropy"
+
+# Training hyperparameters
 SEED = 42
 
+EPOCHS = 30
+LEARNING_RATE = 1e-4
+BATCH_SIZE = 16
+METRIC = "MeanIoU"
+
+# Dataset split
 TRAIN_SPLIT = 0.7
 VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
 
+# Data processings
 DATA_AUGMENTATION = False
+DATA_AUGMENTATION_LIST = []
 DATA_DISCARDING_ACCORDING_TO_NOISE = False
 DATA_NOISE_LAPLACIAN_THRESHOLD = 25
 

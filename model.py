@@ -1,29 +1,11 @@
 from config import *
 import tensorflow as tf
 from tensorflow.keras import layers, models
-from tensorflow.keras.optimizers.legacy import Adam
 
 
-# IoU Metric
-def iou_metric(y_true, y_pred):
-    # Convert predictions and labels to class indices
-    y_pred = tf.argmax(y_pred, axis=-1, output_type=tf.int32)
-    y_true = tf.argmax(y_true, axis=-1, output_type=tf.int32)
-
-    # Compute IoU for each class
-    iou_list = []
-    for i in range(NUM_CLASSES):
-        y_true_class = tf.cast(y_true == i, tf.float32)
-        y_pred_class = tf.cast(y_pred == i, tf.float32)
-        intersection = tf.reduce_sum(y_true_class * y_pred_class)
-        union = tf.reduce_sum(y_true_class) + tf.reduce_sum(y_pred_class) - intersection
-        iou = (intersection + 1e-7) / (union + 1e-7)  # Avoid divide by zero
-        iou_list.append(iou)
-
-    # Compute mean IoU
-    mean_iou = tf.reduce_mean(tf.stack(iou_list))
-    return mean_iou
-
+def get_model():
+    if MODEL_NAME == "U-Net":
+        return unet_model()
 
 # U-Net Model
 def unet_model(input_size=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), num_classes=NUM_CLASSES):
@@ -60,5 +42,5 @@ def unet_model(input_size=(IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), num_classes=NUM
 
     outputs = layers.Conv2D(num_classes, (1, 1), activation='softmax')(c7)
     model = models.Model(inputs, outputs)
-    model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss='categorical_crossentropy', metrics=[iou_metric])
+    
     return model
