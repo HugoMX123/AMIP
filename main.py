@@ -10,7 +10,7 @@ import time
 from config import *
 from data import *
 from model import get_model
-from evaluation import save_results, get_metric
+from evaluation import save_results, get_metric, save_learning_curve
 
 
 # fix the seeds
@@ -47,6 +47,8 @@ start_time = time.time()
 history = model.fit(train_dataset, validation_data=val_dataset, epochs=EPOCHS, callbacks=[checkpoint_callback], verbose = 1)
 traning_time = time.time() - start_time
 print(f"Training time: {time.time() - start_time} s")
+
+save_learning_curve(history, monitor_metric)
 
 best_model_path = max(
     [os.path.join(checkpoint_folder, f) for f in os.listdir(checkpoint_folder) if f.endswith(".h5")],

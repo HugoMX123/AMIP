@@ -1,3 +1,8 @@
+BATCH_SIZE = 32
+SPECIALIZATION = "_5_DIVIDE_FIRST_aug"
+
+
+# COMMON PARAMETERS
 # saving path
 SAVING_PATH = '/net/travail/mvajay/advanced_project/'
 
@@ -9,25 +14,24 @@ NUM_CLASSES = 29
 
 # Model
 MODEL_NAME = "U-Net"
-SPECIALIZATION = "_tf_iou"
 LOSS_FUNCTION = "categorical_crossentropy"
 
 # Training hyperparameters
 SEED = 42
 
-EPOCHS = 30
-LEARNING_RATE = 1e-4
-BATCH_SIZE = 16
+EPOCHS = 70
+LEARNING_RATE = 1e-3
 METRIC = "MeanIoU"
 
 # Dataset split
+DIVIDE_FIRST = True
 TRAIN_SPLIT = 0.7
 VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
 
 # Data processings
-DATA_AUGMENTATION = False
-DATA_AUGMENTATION_LIST = []
+DATA_AUGMENTATION = True
+DATA_AUGMENTATION_LIST = ["horizontal_flip"]
 DATA_DISCARDING_ACCORDING_TO_NOISE = False
 DATA_NOISE_LAPLACIAN_THRESHOLD = 25
 

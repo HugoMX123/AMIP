@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import tensorflow as tf
-
+import matplotlib.pyplot as plt
 from config import *
 
 def get_metric():
@@ -38,6 +38,19 @@ def iou_metric(y_true, y_pred):
 
 def dice_metric():
     pass
+
+def save_learning_curve(history, monitor_metric):
+    # Plot training and validation chosen metric (e.g., accuracy)
+    plt.plot(history.history[monitor_metric[4:]], label=f'Training {monitor_metric.capitalize()}')
+    plt.plot(history.history[monitor_metric], label=f'Validation {monitor_metric.capitalize()}')
+    plt.title(f'{monitor_metric.capitalize()} Curves')
+    plt.xlabel('Epochs')
+    plt.ylabel(monitor_metric.capitalize())
+    plt.legend()
+
+    # Save the plots
+    plot_file_path = SAVING_PATH + 'learning_curves/' + MODEL_NAME + SPECIALIZATION + '_learning_curves.png'
+    plt.savefig(plot_file_path, dpi=300, bbox_inches='tight')
 
 def save_results(history, test_acc, traning_time, add_spec = "", file_name = "results.xlsx"):
 

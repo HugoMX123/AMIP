@@ -12,6 +12,21 @@ def is_noisy(img_path, threshold=100.0):
     variance = laplacian.var()
     return variance < threshold
 
+def filter_noise(image_paths, mask_paths):
+    filtered_images = []
+    filtered_masks = []
+    discarded_count = 0
+    for img, mask in zip(image_paths, mask_paths):
+        if not is_noisy(img, threshold=DATA_NOISE_LAPLACIAN_THRESHOLD):
+            filtered_images.append(img)
+            filtered_masks.append(mask)
+        else:
+            discarded_count += 1
+    print(f"Discarded {discarded_count} out of {len(image_paths)} images due to noise.")
+    image_paths = filtered_images
+    mask_paths = filtered_masks
+    return image_paths, mask_paths
+
 # RGB to Class Mapping
 def rgb_to_class(mask):
     mapping = {
@@ -71,8 +86,10 @@ def parse_image(img_path, mask_path):
 
 # Augment function for horizontal flipping (you can expand this for more augmentations)
 def augment_image(img, mask):
-    img = tf.image.flip_left_right(img)
-    mask = tf.image.flip_left_right(mask)
+    if "horizontal_flip" in DATA_AUGMENTATION_LIST:
+        img = tf.image.flip_left_right(img)
+        mask = tf.image.flip_left_right(mask)
+    
     return img, mask
 
 def create_dataset(image_paths, mask_paths, batch_size, augment=False):
@@ -98,35 +115,57 @@ def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_thresho
     rainy_image_paths = [os.path.join(RAINY_IMAGES_PATH, f) for f in rainy_image_files]
     rainy_mask_paths = [os.path.join(RAINY_MASKS_PATH, f) for f in rainy_image_files]
 
-    image_paths = sunny_image_paths + rainy_image_paths
-    mask_paths = sunny_mask_paths + rainy_mask_paths
+    if DIVIDE_FIRST:
+        print("FIRST DIVIDING SUNNY AND RAINY")
+        if FILTER_NOISY:
+            sunny_image_paths, sunny_mask_paths = filter_noise(sunny_image_paths, sunny_mask_paths)
+            rainy_image_paths, rainy_mask_paths = filter_noise(rainy_image_paths, rainy_mask_paths)
+        
+        # Split sunny datasets
+        sunny_train_img, sunny_val_test_img, sunny_train_mask, sunny_val_test_mask = train_test_split(
+            sunny_image_paths, sunny_mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED)
+        
+        sunny_val_img, sunny_test_img, sunny_val_mask, sunny_test_mask = train_test_split(
+            sunny_val_test_img, sunny_val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED)
+        
+        # Split rainy datasets
+        rainy_train_img, rainy_val_test_img, rainy_train_mask, rainy_val_test_mask = train_test_split(
+            rainy_image_paths, rainy_mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED)
+        
+        rainy_val_img, rainy_test_img, rainy_val_mask, rainy_test_mask = train_test_split(
+            rainy_val_test_img, rainy_val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED)
+        
+        train_img = sunny_train_img + rainy_train_img
+        train_mask = sunny_train_mask + rainy_train_mask
+        val_img = sunny_val_img + rainy_val_img
+        val_mask = sunny_val_mask + rainy_val_mask
+        test_img = sunny_test_img + rainy_test_img
+        test_mask = sunny_test_mask + rainy_test_mask
 
-    # Filter noisy images if enabled
-    if FILTER_NOISY:
-        filtered_images = []
-        filtered_masks = []
-        discarded_count = 0
-        for img, mask in zip(image_paths, mask_paths):
-            if not is_noisy(img, threshold=noise_threshold):
-                filtered_images.append(img)
-                filtered_masks.append(mask)
-            else:
-                discarded_count += 1
-        print(f"Discarded {discarded_count} out of {len(image_paths)} images due to noise.")
-        image_paths = filtered_images
-        mask_paths = filtered_masks
+        # Create datasets, apply augmentation if enabled
+        train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE, augment=AUGMENT_DATA)
+        val_dataset = create_dataset(val_img, val_mask, BATCH_SIZE)
+        test_dataset = create_dataset(test_img, test_mask, BATCH_SIZE)
 
-    # Split datasets
-    train_img, val_test_img, train_mask, val_test_mask = train_test_split(
-        image_paths, mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED)
-    
-    val_img, test_img, val_mask, test_mask = train_test_split(
-        val_test_img, val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED)
+    else:
+        image_paths = sunny_image_paths + rainy_image_paths
+        mask_paths = sunny_mask_paths + rainy_mask_paths
 
-    # Create datasets, apply augmentation if enabled
-    train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE, augment=AUGMENT_DATA)
-    val_dataset = create_dataset(val_img, val_mask, BATCH_SIZE)
-    test_dataset = create_dataset(test_img, test_mask, BATCH_SIZE)
+        # Filter noisy images if enabled
+        if FILTER_NOISY:
+            image_paths, mask_paths = filter_noise(image_paths, mask_paths)
+
+        # Split datasets
+        train_img, val_test_img, train_mask, val_test_mask = train_test_split(
+            image_paths, mask_paths, test_size=(1-TRAIN_SPLIT), random_state=SEED)
+        
+        val_img, test_img, val_mask, test_mask = train_test_split(
+            val_test_img, val_test_mask, test_size=(TEST_SPLIT/(TEST_SPLIT + VAL_SPLIT)), random_state=SEED)
+
+        # Create datasets, apply augmentation if enabled
+        train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE, augment=AUGMENT_DATA)
+        val_dataset = create_dataset(val_img, val_mask, BATCH_SIZE)
+        test_dataset = create_dataset(test_img, test_mask, BATCH_SIZE)
 
     return train_dataset, val_dataset, test_dataset
 
