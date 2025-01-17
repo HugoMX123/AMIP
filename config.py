@@ -1,10 +1,10 @@
 BATCH_SIZE = 32
-SPECIALIZATION = "_5_DIVIDE_FIRST_aug"
+SPECIALIZATION = "_image_denoising_16_Jan"
 
 
 # COMMON PARAMETERS
 # saving path
-SAVING_PATH = '/net/travail/mvajay/advanced_project/'
+SAVING_PATH = '/net/travail/hsosapavonca/AMIP/'
 
 # Image dimensions
 IMG_HEIGHT = 128
@@ -30,9 +30,9 @@ VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
 
 # Data processings
-DATA_AUGMENTATION = True
+DATA_AUGMENTATION = False
 DATA_AUGMENTATION_LIST = ["horizontal_flip"]
-DATA_DISCARDING_ACCORDING_TO_NOISE = False
+DATA_DISCARDING_ACCORDING_TO_NOISE = True
 DATA_NOISE_LAPLACIAN_THRESHOLD = 25
 
 # Not implemented yet

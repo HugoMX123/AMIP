@@ -4,9 +4,10 @@ from config import *
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import os
+from denoizing import denoise_dataset
 
 # New function to check noise using Laplacian variance
-def is_noisy(img_path, threshold=100.0):
+def is_noisy(img_path, threshold):
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     laplacian = cv2.Laplacian(img, cv2.CV_64F)
     variance = laplacian.var()
@@ -103,7 +104,7 @@ def create_dataset(image_paths, mask_paths, batch_size, augment=False):
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
 
-def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_threshold=DATA_NOISE_LAPLACIAN_THRESHOLD, AUGMENT_DATA=DATA_AUGMENTATION):
+def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_threshold=DATA_NOISE_LAPLACIAN_THRESHOLD, AUGMENT_DATA=DATA_AUGMENTATION, DATA_DENOIZING=DATA_DENOIZING):
 
     # Load file paths
     sunny_image_files = [f for f in os.listdir(SUNNY_IMAGES_PATH) if f.endswith('.png')]
@@ -118,7 +119,6 @@ def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_thresho
     if DIVIDE_FIRST:
         print("FIRST DIVIDING SUNNY AND RAINY")
         if FILTER_NOISY:
-            sunny_image_paths, sunny_mask_paths = filter_noise(sunny_image_paths, sunny_mask_paths)
             rainy_image_paths, rainy_mask_paths = filter_noise(rainy_image_paths, rainy_mask_paths)
         
         # Split sunny datasets
@@ -166,6 +166,10 @@ def load_datasets(FILTER_NOISY=DATA_DISCARDING_ACCORDING_TO_NOISE, noise_thresho
         train_dataset = create_dataset(train_img, train_mask, BATCH_SIZE, augment=AUGMENT_DATA)
         val_dataset = create_dataset(val_img, val_mask, BATCH_SIZE)
         test_dataset = create_dataset(test_img, test_mask, BATCH_SIZE)
+
+    if DATA_DENOIZING:
+        train_dataset = denoise_dataset(train_dataset)
+
 
     return train_dataset, val_dataset, test_dataset
 
