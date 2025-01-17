@@ -34,7 +34,10 @@ chosen_metric, monitor_metric = get_metric()
 # select the model
 model = get_model()
 
-model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss=LOSS_FUNCTION, metrics=[chosen_metric])
+if LOSS_FUNCTION == "dice":
+    model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss=dice_loss, metrics=[chosen_metric])
+else:
+    model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss=LOSS_FUNCTION, metrics=[chosen_metric])
 
 # Save model after each epoch
 checkpoint_folder = SAVING_PATH + "checkpoints/"+ MODEL_NAME + SPECIALIZATION 

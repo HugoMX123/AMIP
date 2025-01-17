@@ -8,8 +8,11 @@ def get_metric():
     if METRIC == "MeanIoU":
         chosen_metric = tf.keras.metrics.MeanIoU(num_classes=NUM_CLASSES)
         monitor_metric = "val_mean_io_u"
-    elif METRIC == "DICE":
-        chosen_metric = dice_metric
+    elif METRIC == "MeanDICE":
+        chosen_metric = dice_metric(per_class=False)
+        monitor_metric = "val_dice_metric"
+    elif METRIC == "ClassDICE":
+        chosen_metric = dice_metric(per_class=True)
         monitor_metric = "val_dice_metric"
     else:
         raise ValueError(f"Unknown metric: {METRIC}")
@@ -36,8 +39,24 @@ def iou_metric(y_true, y_pred):
     mean_iou = tf.reduce_mean(tf.stack(iou_list))
     return mean_iou
 
-def dice_metric():
-    pass
+def dice_metric(y_true, y_pred, smooth=1e-6, per_class=False):
+    y_true_flat = tf.reshape(y_true, (-1, tf.shape(y_true)[-1]))
+    y_pred_flat = tf.reshape(y_pred, (-1, tf.shape(y_pred)[-1]))
+
+    intersection = tf.reduce_sum(y_true_flat * y_pred_flat, axis=0)
+    union = tf.reduce_sum(y_true_flat, axis=0) + tf.reduce_sum(y_pred_flat, axis=0)
+
+    dice = (2.0 * intersection + smooth) / (union + smooth)
+
+    if per_class:
+        return dice
+    return tf.reduce_mean(dice)
+
+def dice_loss(y_true, y_pred, smooth=1e-6):
+    mean_dice = dice_metric(y_true, y_pred, per_class=False)
+    dice_loss_value = 1 - mean_dice  
+
+    return dice_loss_value
 
 def save_learning_curve(history, monitor_metric):
     # Plot training and validation chosen metric (e.g., accuracy)

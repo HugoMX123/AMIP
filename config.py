@@ -1,5 +1,6 @@
-BATCH_SIZE = 32
-SPECIALIZATION = "_5_DIVIDE_FIRST_aug"
+BATCH_SIZE = 8
+METRIC = "MeanIoU"
+SPECIALIZATION = "bigger_4_iou"
 
 
 # COMMON PARAMETERS
@@ -13,15 +14,15 @@ IMG_CHANNELS = 3
 NUM_CLASSES = 29
 
 # Model
-MODEL_NAME = "U-Net"
+MODEL_NAME = "U-Net bigger"
 LOSS_FUNCTION = "categorical_crossentropy"
 
 # Training hyperparameters
 SEED = 42
 
-EPOCHS = 70
+EPOCHS = 30
 LEARNING_RATE = 1e-3
-METRIC = "MeanIoU"
+#METRIC = "MeanIoU"
 
 # Dataset split
 DIVIDE_FIRST = True
@@ -30,8 +31,8 @@ VAL_SPLIT = 0.15
 TEST_SPLIT = 0.15
 
 # Data processings
-DATA_AUGMENTATION = True
-DATA_AUGMENTATION_LIST = ["horizontal_flip"]
+DATA_AUGMENTATION = False
+DATA_AUGMENTATION_LIST = []
 DATA_DISCARDING_ACCORDING_TO_NOISE = False
 DATA_NOISE_LAPLACIAN_THRESHOLD = 25
 

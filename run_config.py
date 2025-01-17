@@ -3,10 +3,12 @@ import subprocess
 
 # Define the parameter combinations
 configurations = [
-    {"BATCH_SIZE": 4, "SPECIALIZATION": "_2_DIVIDE_FIRST"},
-    {"BATCH_SIZE": 8, "SPECIALIZATION": "_3_DIVIDE_FIRST"},
-    {"BATCH_SIZE": 16, "SPECIALIZATION": "_4_DIVIDE_FIRST"},
-    {"BATCH_SIZE": 32, "SPECIALIZATION": "_5_DIVIDE_FIRST"},
+    {"BATCH_SIZE": 8, "SPECIALIZATION": "bigger_4_iou", "METRIC" : "MeanIoU"},
+    {"BATCH_SIZE": 16, "SPECIALIZATION": "bigger_5_iou","METRIC" : "MeanIoU"},
+    {"BATCH_SIZE": 32, "SPECIALIZATION": "bigger_6_iou","METRIC" : "MeanIoU"},
+    {"BATCH_SIZE": 8, "SPECIALIZATION": "bigger_4_dice", "METRIC" : "MeanDICE"},
+    {"BATCH_SIZE": 16, "SPECIALIZATION": "bigger_5_dice","METRIC" : "MeanDICE"},
+    {"BATCH_SIZE": 32, "SPECIALIZATION": "bigger_6_dice","METRIC" : "MeanDICE"},
 ]
 
 # Path to parameters.py and main.py
@@ -21,6 +23,7 @@ if not os.path.exists(f"{parameters_file}.backup"):
 def update_parameters(config):
     with open(parameters_file, "w") as file:
         file.write(f"""BATCH_SIZE = {config['BATCH_SIZE']}\n""")
+        file.write(f"""METRIC = "{config['METRIC']}"\n""")
         file.write(f"""SPECIALIZATION = "{config['SPECIALIZATION']}"\n\n""")
         file.write("""
 # COMMON PARAMETERS
@@ -34,15 +37,15 @@ IMG_CHANNELS = 3
 NUM_CLASSES = 29
 
 # Model
-MODEL_NAME = "U-Net"
+MODEL_NAME = "U-Net bigger"
 LOSS_FUNCTION = "categorical_crossentropy"
 
 # Training hyperparameters
 SEED = 42
 
-EPOCHS = 50
+EPOCHS = 30
 LEARNING_RATE = 1e-3
-METRIC = "MeanIoU"
+#METRIC = "MeanIoU"
 
 # Dataset split
 DIVIDE_FIRST = True
