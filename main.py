@@ -10,7 +10,7 @@ import time
 from config import *
 from data import *
 from model import get_model
-from evaluation import save_results, get_metric, save_learning_curve
+from evaluation import save_results, get_metric, save_learning_curve, dice_loss
 
 
 # fix the seeds
