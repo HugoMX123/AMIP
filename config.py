@@ -1,5 +1,6 @@
-BATCH_SIZE = 32
-SPECIALIZATION = "_image_denoising_16_Jan"
+BATCH_SIZE = 16
+METRIC = "MeanIoU"
+SPECIALIZATION = "best_denoised"
 
 
 # COMMON PARAMETERS
@@ -14,14 +15,14 @@ NUM_CLASSES = 29
 
 # Model
 MODEL_NAME = "U-Net"
-LOSS_FUNCTION = "categorical_crossentropy"
+LOSS_FUNCTION = "dice"
 
 # Training hyperparameters
 SEED = 42
 
-EPOCHS = 70
+EPOCHS = 30
 LEARNING_RATE = 1e-3
-METRIC = "MeanIoU"
+#METRIC = "MeanIoU"
 
 # Dataset split
 DIVIDE_FIRST = True
@@ -31,12 +32,12 @@ TEST_SPLIT = 0.15
 
 # Data processings
 DATA_AUGMENTATION = False
-DATA_AUGMENTATION_LIST = ["horizontal_flip"]
+DATA_AUGMENTATION_LIST = []
 DATA_DISCARDING_ACCORDING_TO_NOISE = True
 DATA_NOISE_LAPLACIAN_THRESHOLD = 25
 
 # Not implemented yet
-DATA_DENOIZING = False
+DATA_DENOIZING = True
 
 
 # Paths to dataset folders

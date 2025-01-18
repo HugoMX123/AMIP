@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from config import *
-from model import iou_metric
 from data import load_datasets
 from model import unet_model
 
@@ -46,7 +45,7 @@ print("Test dataset size:", tf.data.experimental.cardinality(test_dataset).numpy
 
 
 # Path to the saved model (adjust the epoch number as needed)
-checkpoint_path = "checkpoints/epoch_30.h5"
+checkpoint_path = "epoch_48.h5"
 
 # Initialize the model architecture
 model = unet_model()
@@ -55,4 +54,4 @@ model = unet_model()
 model.load_weights(checkpoint_path)
 
 
-visualize_predictions(model, test_dataset, num_samples=10)
+visualize_predictions(model, test_dataset, num_samples=20)

@@ -10,7 +10,7 @@ import time
 from config import *
 from data import *
 from model import get_model
-from evaluation import save_results, get_metric, save_learning_curve
+from evaluation import save_results, get_metric, save_learning_curve, dice_loss
 
 
 # fix the seeds
@@ -34,10 +34,17 @@ chosen_metric, monitor_metric = get_metric()
 # select the model
 model = get_model()
 
-model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss=LOSS_FUNCTION, metrics=[chosen_metric])
+if LOSS_FUNCTION == "dice":
+    model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss=dice_loss, metrics=[chosen_metric])
+else:
+    model.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss=LOSS_FUNCTION, metrics=[chosen_metric])
 
 # Save model after each epoch
-checkpoint_folder = SAVING_PATH + "checkpoints/"+ MODEL_NAME + SPECIALIZATION 
+if DATA_DENOIZING:
+    checkpoint_folder = SAVING_PATH + "checkpoints/"+ MODEL_NAME + SPECIALIZATION + "_denoised"
+else:
+    checkpoint_folder = SAVING_PATH + "checkpoints/"+ MODEL_NAME + SPECIALIZATION
+
 if not os.path.exists(checkpoint_folder):
       os.mkdir(checkpoint_folder)
 
@@ -48,7 +55,7 @@ history = model.fit(train_dataset, validation_data=val_dataset, epochs=EPOCHS, c
 traning_time = time.time() - start_time
 print(f"Training time: {time.time() - start_time} s")
 
-save_learning_curve(history, monitor_metric)
+#save_learning_curve(history, monitor_metric)
 
 best_model_path = max(
     [os.path.join(checkpoint_folder, f) for f in os.listdir(checkpoint_folder) if f.endswith(".h5")],
@@ -67,6 +74,12 @@ test_loss, test_acc = best_model.evaluate(test_dataset)
 history_df = pd.DataFrame(history.history)
 
 # Save the DataFrame to a CSV file
-history_df.to_csv( SAVING_PATH + 'training_history/' + MODEL_NAME + SPECIALIZATION + '.csv', index=False) 
+if DATA_DENOIZING:
+    history_df.to_csv( SAVING_PATH + 'training_history/' + MODEL_NAME + SPECIALIZATION + 'denoised.csv', index=False) 
+else:
+    history_df.to_csv( SAVING_PATH + 'training_history/' + MODEL_NAME + SPECIALIZATION + '.csv', index=False)
+    
+
+
 
 save_results(history, test_acc, traning_time)
